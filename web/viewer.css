@@ -1,0 +1,73 @@
+body { margin: 0; height: 100dvh; display: grid; grid-template-rows: minmax(0, 1fr); background: #181b23; color: #e7e9ef; font: 14px system-ui, sans-serif; }
+body.export { grid-template-rows: minmax(0, 1fr); background: #132726; }
+header { position: absolute; inset: 0 0 auto; z-index: 3; display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px 20px; pointer-events: none; background: linear-gradient(#101822f0, #1018229c 54%, transparent); }
+header button, dialog button { font: inherit; color: inherit; background: #202936; border: 1px solid #505970; border-radius: 5px; padding: 5px 9px; cursor: pointer; }
+.workspace { display: flex; min-width: 0; align-items: center; gap: 9px; }
+#workspace-open, .control-group { pointer-events: auto; }
+.workspace-info { display: grid; gap: 3px; min-width: 0; }
+#workspace-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#workspace-open { width: 36px; height: 36px; flex: none; display: grid; place-items: center; }
+.folder-icon { width: 15px; height: 10px; position: relative; border: 1px solid #aec4d9; border-radius: 2px; }
+.folder-icon::before { content: ''; position: absolute; left: 0; top: -4px; width: 6px; height: 3px; border: 1px solid #aec4d9; border-bottom: 0; border-radius: 2px 2px 0 0; }
+#status { color: #b5bfd2; font-size: 12px; }
+#preview { container-type: size; display: grid; place-items: center; min-width: 0; min-height: 0; overflow: hidden; margin: 12px; }
+.export #preview { margin: 0; }
+.export #preview.content-height-preview { overflow: auto; align-items: start; scrollbar-gutter: stable; }
+.prototype-screen { position: relative; overflow: hidden; isolation: isolate; color: #181820; font-size: 16px; }
+.native-frame { display: block; width: 100%; height: 100%; }
+.render-grayscale { filter: grayscale(1); }
+.gaze-background > :not(.gaze-overlay) { filter: grayscale(1); }
+.gaze-overlay { position: absolute; z-index: 100; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.gaze-empty { inset: 5% auto auto 5%; width: auto; height: auto; max-width: 90%; padding: .6em 1em; border-radius: .35em; background: #18202d; color: #fff; }
+.viewer-controls { display: grid; justify-items: end; gap: 6px; margin-left: auto; flex: none; }
+.control-group { display: flex; gap: 2px; padding: 3px; background: #20242bea; border: 1px solid #ffffff16; border-radius: 10px; box-shadow: 0 6px 24px #0003; backdrop-filter: blur(16px); }
+.flow-tools { position: absolute; z-index: 2; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); flex-direction: column; }
+.control-group .icon-control { display: grid; place-items: center; width: 36px; height: 34px; padding: 0; color: inherit; background: transparent; border: 1px solid transparent; border-radius: 6px; cursor: pointer; }
+.control-group .icon-control:hover { background: #ffffff10; }
+.control-group .icon-control[aria-pressed="true"] { background: #394c60; border-color: #69819a; }
+.icon-control svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon-control .icon-fill { fill: currentColor; stroke: none; }
+#flow-board { position: relative; min-height: 0; overflow: hidden; }
+.flow-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  background-color: #141e2a;
+  background-image: linear-gradient(#aecaf016 1px, transparent 1px), linear-gradient(90deg, #aecaf016 1px, transparent 1px), linear-gradient(#aecaf008 1px, transparent 1px), linear-gradient(90deg, #aecaf008 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+}
+.flow-viewport.dragging { cursor: grabbing; }
+.flow-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.flow-empty { margin: 60px 20px; white-space: nowrap; }
+.flow-card { position: absolute; z-index: 2; width: 224px; }
+.flow-card h2 { display: flex; align-items: center; margin: 0; height: 24px; font-size: 13px; font-weight: 500; color: #aebdcd; }
+.flow-card-preview { position: relative; display: grid; place-items: center; width: 100%; height: 398px; overflow: hidden; color: #b8c5d5; background: #202b38; border-radius: 6px; outline: 1px solid #65788c55; box-shadow: 0 8px 20px #0003; }
+.flow-card:focus { outline: none; }
+.flow-card:focus .flow-card-preview { outline: 2px solid #9fdbff; }
+.flow-card-preview img { pointer-events: none; }
+.flow-zone { position: absolute; padding: 0; border: 1px dashed #f5fbffcc; border-radius: 4px; background: #0a30422b; cursor: pointer; }
+.flow-zone:hover, .flow-zone:focus-visible { border: 1px solid #e9faff; outline: 2px solid #28729d; background: #68c6f54d; }
+.flow-lines { position: absolute; z-index: 1; top: 0; left: 0; pointer-events: none; }
+.flow-connection { color: #fff; }
+.flow-connection.is-highlighted { color: #a9e1ff; }
+.flow-spline { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.flow-connection.is-highlighted .flow-spline { stroke-width: 3; }
+.flow-link-node { fill: currentColor; }
+.flow-link-label { fill: currentColor; stroke: #141e2a; stroke-width: 7; stroke-linejoin: round; paint-order: stroke fill; font: 600 13px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+.flow-connection.is-highlighted .flow-link-label { stroke: #24435a; }
+#workspace-picker { padding: 0; width: min(490px, calc(100% - 32px)); max-height: min(420px, 70dvh); border: 1px solid #526075; border-radius: 9px; background: #1e2632; color: #e7e9ef; }
+#workspace-picker[open] { display: flex; flex-direction: column; }
+#workspace-picker::backdrop { background: #080b1099; }
+#workspace-search { box-sizing: border-box; width: 100%; padding: 14px 16px; color: inherit; background: #242e3b; border: 0; border-bottom: 1px solid #526075; font: inherit; }
+#workspace-results { overflow: auto; padding: 4px; }
+#workspace-results:empty { display: none; }
+#workspace-results button { display: block; width: 100%; padding: 9px 12px; border: 0; text-align: left; background: transparent; overflow-wrap: anywhere; }
+#workspace-results button:is([aria-selected="true"], :hover) { background: #344556; color: #eef6ff; }
+#workspace-empty { margin: 0; padding: 12px 16px; }
+@media (max-width: 600px) {
+  header { padding: 7px 9px; }
+  #preview { margin: 0; }
+}

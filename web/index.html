@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="ui-viewer-generation" content="__VIEWER_GENERATION__">
+<title>UI Workbench</title>
+<link rel="stylesheet" href="/viewer.css">
+<body>
+  <header>
+    <div class="workspace">
+      <button id="workspace-open" type="button" aria-label="Switch workspace" aria-haspopup="dialog" aria-controls="workspace-picker" aria-keyshortcuts="Control+p Meta+p" title="Switch workspace (Ctrl+P)"><span class="folder-icon" aria-hidden="true"></span></button>
+      <div class="workspace-info">
+        <span id="workspace-path">Loading workspace…</span>
+        <span id="status" role="status"></span>
+      </div>
+    </div>
+    <div class="viewer-controls">
+      <div class="header-actions control-group" role="group" aria-label="Render modes">
+        <button class="icon-control" type="button" data-render-mode="color" aria-pressed="true" aria-label="Color" title="Color">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 0-8.5 8.5h1.4a1.9 1.9 0 0 0 1.2-3.3 1.4 1.4 0 0 1 .9-2.4H18a2.5 2.5 0 0 0 2.5-2.8Z"/><circle class="icon-fill" cx="7.8" cy="12.2" r="1.3"/><circle class="icon-fill" cx="10" cy="7.8" r="1.3"/><circle class="icon-fill" cx="15" cy="8.2" r="1.3"/></svg>
+        </button>
+        <button class="icon-control" type="button" data-render-mode="grayscale" aria-pressed="false" aria-label="Grayscale" title="Grayscale">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path class="icon-fill" d="M12 4a8 8 0 0 1 0 16Z"/></svg>
+        </button>
+        <button class="icon-control" type="button" data-render-mode="gaze" aria-pressed="false" aria-label="Gaze" title="Predicted gaze">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <dialog id="workspace-picker" aria-label="Switch workspace">
+    <input id="workspace-search" type="text" role="combobox" aria-label="Search workspaces" aria-controls="workspace-results" aria-expanded="true" autocomplete="off" spellcheck="false" placeholder="Search workspaces…" autofocus>
+    <div id="workspace-results" role="listbox" aria-label="UI workspaces"></div>
+    <p id="workspace-empty" role="status" hidden>No matching workspaces.</p>
+  </dialog>
+  <main id="flow-board" aria-label="Mock-up flow board">
+    <div class="flow-tools control-group" role="group" aria-label="Canvas controls">
+      <button class="icon-control" type="button" data-flow-fit aria-label="Fit canvas" title="Fit canvas">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+      </button>
+      <button class="icon-control" type="button" data-flow-out aria-label="Zoom out" title="Zoom out">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8 10.5h5"/></svg>
+      </button>
+      <button class="icon-control" type="button" data-flow-in aria-label="Zoom in" title="Zoom in">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M8 10.5h5m-2.5-2.5v5"/></svg>
+      </button>
+    </div>
+    <div class="flow-viewport" tabindex="0" aria-label="Flow canvas. Drag to pan, scroll or pinch to zoom">
+      <div class="flow-world"></div>
+    </div>
+  </main>
+  <script defer src="/render.js"></script>
+  <script defer src="/flow.js"></script>
+  <script defer src="/viewer.js"></script>
+</body>
+</html>

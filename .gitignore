@@ -1,0 +1,6 @@
+# Local Workbench state.
+/.ui/
+
+# Build output and local browser artifacts.
+/target/
+/.playwright-mcp/

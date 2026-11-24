@@ -1,0 +1,20 @@
+[package]
+name = "ui-workbench"
+version = "0.1.0"
+edition = "2024"
+autobins = false
+license = "MIT"
+
+[dependencies]
+ab_glyph = "0.2.32"
+png = "0.17.16"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "atk-ui-cli"
+path = "src/cli.rs"
+
+[[bin]]
+name = "atk-ui"
+path = "src/server.rs"
