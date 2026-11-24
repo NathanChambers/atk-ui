@@ -268,7 +268,7 @@ impl Project {
     pub fn execute(&self, id: &str, request: &Value) -> Result<Value> {
         let command = text(request, "command")?;
         match command {
-            "help" => Ok(help()),
+            "help" => Ok(crate::help::execute(request, help())?),
             "project_list" => Ok(json!(self.list()?)),
             "session_inspect" => {
                 let mut document = self.read(id)?;

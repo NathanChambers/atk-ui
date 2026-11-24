@@ -151,7 +151,11 @@ or pass/fail verdict.
 
 Send a JSON object through stdin, pass it with `--command JSON`, or read it with `--file FILE` or `--input FILE`. Send `{"command":"help"}` for command discovery.
 
-Use `--batch` for a JSON array of 1 to 1,024 commands. Commands run in order, with one JSON reply per attempted command. Execution stops at the first failure and earlier edits remain applied. Check the exit status and JSON replies before retrying.
+Send a JSON array of 1 to 1,024 commands to run a batch. Use `--batch` to require array input. The CLI checks the command shape before it starts. Commands then run in order, with one JSON reply per attempted command. Execution stops at the first failure and earlier edits remain applied. Check the exit status and JSON replies before retrying.
+
+Use `{"command":"help","all":true}` to list documentation topics. Read a topic with `{"command":"help","topic":"command-api"}` and pass the returned `next_offset` as `offset` until it is null.
+
+Pass `--output FILE` for a single export. Relative paths use the CLI working directory. For a JSON request's `path` field, relative paths use the project directory. Set `path` on individual commands in a batch. With `session_render` and `--output`, the CLI infers PNG, HTML, or JSON from the filename when `format` is omitted.
 
 Successful command replies include `ok: true` and a `result`. Failures exit with status 1 and report JSON on stdout. Standard export replies include `written.path` and `written.bytes` for requested output files.
 

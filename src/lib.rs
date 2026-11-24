@@ -1,4 +1,5 @@
 mod compare;
+mod help;
 pub mod native;
 pub mod preview;
 pub mod project;
