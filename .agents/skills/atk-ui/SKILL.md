@@ -5,6 +5,8 @@ description: Use the UI Workbench CLI to author, inspect, render, or export UI m
 
 # atk-ui
 
+When this skill is invoked, use the UI Workbench CLI command workflow unless the user explicitly specifies another method. Author the mockup or navigation flow in the target session with `atk-ui-cli` commands. Scripts may prepare and submit CLI command batches. If the CLI cannot perform a required operation, explain the limitation and ask before switching to external authoring.
+
 ## Select the project and session
 
 - Check `atk-ui-cli --help` and `atk-ui --help`. If the tools are unavailable on PATH, run `cargo build --locked` in the UI Workbench source checkout and use its `target/debug` binaries (`.exe` on Windows).
