@@ -1,11 +1,11 @@
 use std::{
-    collections::VecDeque,
-    env,
+    collections::{BTreeMap, VecDeque},
+    env, fs,
     io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::ExitCode,
-    sync::{Arc, Mutex, OnceLock, mpsc},
+    sync::{Arc, Condvar, Mutex, OnceLock, mpsc},
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -28,6 +28,13 @@ struct FrameKey {
 struct FrameCache {
     frames: VecDeque<(FrameKey, Arc<[u8]>)>,
     bytes: usize,
+}
+
+#[derive(Default)]
+struct SessionEvents {
+    clients: Mutex<usize>,
+    generation: Mutex<u64>,
+    changed: Condvar,
 }
 
 impl FrameCache {
@@ -105,6 +112,10 @@ fn run() -> Result<()> {
     if !root.is_dir() {
         return Err("Project root must be a directory".into());
     }
+    let events = Arc::new(SessionEvents::default());
+    let directory = root.join(".ui").join("sessions");
+    let watcher = Arc::clone(&events);
+    thread::spawn(move || watch_sessions(&directory, &watcher));
     let project = Arc::new(Project::new(root));
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     let address = listener.local_addr()?;
@@ -115,12 +126,13 @@ fn run() -> Result<()> {
     for _ in 0..4 {
         let project = Arc::clone(&project);
         let frames = Arc::clone(&frames);
+        let events = Arc::clone(&events);
         let receive = Arc::clone(&receive);
         thread::spawn(move || {
             loop {
                 let stream = receive.lock().unwrap().recv();
                 let Ok(stream) = stream else { break };
-                let _ = handle(stream, &project, address.port(), &frames);
+                let _ = handle(stream, &project, address.port(), &frames, &events);
             }
         });
     }
@@ -133,11 +145,93 @@ fn run() -> Result<()> {
     Ok(())
 }
 
+fn watch_sessions(directory: &Path, events: &SessionEvents) {
+    let mut previous = None;
+    loop {
+        let current = session_files(directory);
+        if previous.as_ref() != Some(&current) {
+            previous = Some(current);
+            *events.generation.lock().unwrap() += 1;
+            events.changed.notify_all();
+        }
+        thread::sleep(Duration::from_millis(200));
+    }
+}
+
+fn session_files(directory: &Path) -> BTreeMap<PathBuf, (Option<SystemTime>, u64)> {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return BTreeMap::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension()?.to_str()? != "json" {
+                return None;
+            }
+            let metadata = entry.metadata().ok()?;
+            metadata
+                .is_file()
+                .then(|| (path, (metadata.modified().ok(), metadata.len())))
+        })
+        .collect()
+}
+
+fn start_event_stream(mut stream: TcpStream, events: &Arc<SessionEvents>) -> Result<()> {
+    const MAX_CLIENTS: usize = 16;
+    let mut clients = events.clients.lock().unwrap();
+    if *clients >= MAX_CLIENTS {
+        drop(clients);
+        return respond(
+            &mut stream,
+            "503 Service Unavailable",
+            "text/plain",
+            "Too many viewer connections",
+            None,
+        );
+    }
+    *clients += 1;
+
+    let listener = Arc::clone(events);
+    let worker = thread::Builder::new().spawn(move || {
+        let _ = stream_events(stream, &listener);
+        *listener.clients.lock().unwrap() -= 1;
+    });
+    if worker.is_err() {
+        *clients -= 1;
+    }
+    worker?;
+    Ok(())
+}
+
+fn stream_events(mut stream: TcpStream, events: &SessionEvents) -> std::io::Result<()> {
+    let mut last = *events.generation.lock().unwrap();
+    stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\n\r\n: connected\n\n")?;
+
+    loop {
+        let generation = events.generation.lock().unwrap();
+        let (generation, _) = events
+            .changed
+            .wait_timeout_while(generation, Duration::from_secs(10), |value| *value == last)
+            .unwrap();
+        let current = *generation;
+        drop(generation);
+
+        if current == last {
+            stream.write_all(b": heartbeat\n\n")?;
+        } else {
+            stream.write_all(b"event: change\ndata: sessions\n\n")?;
+            last = current;
+        }
+    }
+}
+
 fn handle(
     mut stream: TcpStream,
     project: &Project,
     port: u16,
     frames: &Mutex<FrameCache>,
+    events: &Arc<SessionEvents>,
 ) -> Result<()> {
     let timeout = Some(Duration::from_secs(2));
     stream.set_read_timeout(timeout)?;
@@ -184,6 +278,9 @@ fn handle(
         );
     }
     let (path, query) = path.split_once('?').unwrap_or((path, ""));
+    if path == "/api/events" {
+        return start_event_stream(stream, events);
+    }
     if path == "/" {
         let page = render::INDEX.replace("__VIEWER_GENERATION__", viewer_generation());
         return respond(&mut stream, "200 OK", "text/html", &page, None);

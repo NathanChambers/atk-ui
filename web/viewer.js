@@ -18,6 +18,9 @@ let matches = [];
 let activeIndex = 0;
 let displayed = '';
 let revision = null;
+let refreshQueued = false;
+let refreshing = false;
+let retryTimer = null;
 
 function updateModeButtons() {
   for (const button of modeButtons) {
@@ -30,7 +33,7 @@ function renderCurrent() {
   if (!currentSnapshot) return;
 
   const description = mode === 'gaze' ? 'Predicted gaze · 0–100' : 'Read-only';
-  status.textContent = `Revision ${currentSnapshot.revision} · ${description}`;
+  status.textContent = `rev ${currentSnapshot.revision} · ${description}`;
   status.title = mode === 'gaze' ? currentSnapshot.gaze?.rationale ?? '' : '';
 }
 
@@ -89,6 +92,7 @@ function chooseWorkspace(id) {
   url.searchParams.set('session', id);
   history.replaceState(null, '', url);
   picker.close();
+  requestRefresh();
 }
 
 workspaceButton.addEventListener('click', openWorkspaces);
@@ -157,13 +161,34 @@ async function refresh() {
   workspacePath.textContent = snapshot.name;
 }
 
-async function poll() {
-  try {
-    await refresh();
-  } catch (error) {
-    status.textContent = error.message;
-  }
-  setTimeout(poll, 650);
+function requestRefresh() {
+  clearTimeout(retryTimer);
+  refreshQueued = true;
+  if (refreshing === false) drainRefreshes();
 }
 
-poll();
+async function drainRefreshes() {
+  refreshing = true;
+  while (refreshQueued) {
+    refreshQueued = false;
+    try {
+      await refresh();
+    } catch (error) {
+      status.textContent = error.message;
+      if (refreshQueued === false) retryTimer = setTimeout(requestRefresh, 1000);
+    }
+  }
+  refreshing = false;
+}
+
+function connectEvents() {
+  const events = new EventSource('/api/events');
+  events.addEventListener('open', requestRefresh);
+  events.addEventListener('change', requestRefresh);
+  events.addEventListener('error', () => {
+    status.textContent = 'Reconnecting…';
+    if (events.readyState === EventSource.CLOSED) setTimeout(connectEvents, 1000);
+  });
+}
+
+connectEvents();
