@@ -84,13 +84,13 @@ fn main() -> ExitCode {
 
 fn run() -> Result<()> {
     let mut root = None;
-    let mut port = 7881;
+    let mut port = 0;
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--help" | "-h" => {
                 println!(
-                    "atk-ui [--project DIR | DIR] [--port 7881]\nServes saved UI render snapshots in a read-only browser viewer.\nThe directory defaults to the current working directory."
+                    "atk-ui [--project DIR | DIR] [--port PORT]\nServes saved UI render snapshots in a read-only browser viewer.\nThe directory defaults to the current working directory. Omit --port or pass 0 for an available port."
                 );
                 return Ok(());
             }

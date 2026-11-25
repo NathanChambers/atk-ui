@@ -14,7 +14,7 @@ In a fresh project directory, create and render a first screen:
 atk-ui
 ```
 
-Open the [UI viewer](http://127.0.0.1:7881) and choose **Hello UI** with the folder button. The CLI saves the design under `.ui/sessions/`.
+Open the viewer URL printed at startup and choose **Hello UI** with the folder button. The CLI saves the design under `.ui/sessions/`.
 
 ## Author a screen
 
