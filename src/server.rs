@@ -9,7 +9,7 @@ use std::{
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use ui_workbench::{
+use atk_ui::{
     Result, native, preview,
     project::{Document, Project},
     render,
@@ -116,10 +116,11 @@ fn run() -> Result<()> {
     let directory = root.join(".ui").join("sessions");
     let watcher = Arc::clone(&events);
     thread::spawn(move || watch_sessions(&directory, &watcher));
-    let project = Arc::new(Project::new(root));
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     let address = listener.local_addr()?;
-    eprintln!("UI Workbench viewer at http://{address}");
+    eprintln!("atk-ui viewer at http://{address}");
+    eprintln!("Watching project: {}", root.display());
+    let project = Arc::new(Project::new(root));
     let frames = Arc::new(Mutex::new(FrameCache::default()));
     let (send, receive) = mpsc::sync_channel(16);
     let receive = Arc::new(Mutex::new(receive));
@@ -444,7 +445,7 @@ fn apply_preview(document: &mut Document, query: &str) -> Result<()> {
         if revision != Some(document.revision) {
             return Err("The saved workspace changed; reload the flow board".into());
         }
-        return ui_workbench::flow::apply(document, frame);
+        return atk_ui::flow::apply(document, frame);
     }
     let Some(path) = query_value(query, "preview") else {
         return Ok(());

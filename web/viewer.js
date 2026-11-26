@@ -30,6 +30,10 @@ function updateModeButtons() {
 
 function renderCurrent() {
   showFlow(currentSnapshot, mode);
+  renderStatus();
+}
+
+function renderStatus() {
   if (!currentSnapshot) return;
 
   const description = mode === 'gaze' ? 'Predicted gaze · 0–100' : 'Read-only';
@@ -126,17 +130,19 @@ async function refresh() {
     return;
   }
   const ids = await list.json();
-  if (!ids.includes(selected)) selected = ids[0] ?? '';
+  if (!selected) selected = ids[0] ?? '';
   if (ids.join('|') !== workspaces.join('|')) {
     workspaces = ids;
     if (picker.open) drawWorkspaces();
   }
 
-  if (!selected) {
-    workspacePath.textContent = 'No workspace selected';
-    status.textContent = 'Read-only viewer';
-    currentSnapshot = null;
-    renderCurrent();
+  if (!ids.includes(selected)) {
+    workspacePath.textContent = selected || 'No workspace selected';
+    status.textContent = selected ? 'Waiting for saved workspace' : 'Waiting for a saved workspace in this project';
+    if (currentSnapshot) {
+      currentSnapshot = null;
+      renderCurrent();
+    }
     displayed = '';
     revision = null;
     return;
@@ -147,7 +153,7 @@ async function refresh() {
   const response = await fetch('/api/sessions/' + encodeURIComponent(id), { headers, cache: 'no-store' });
   if (id !== selected) return;
   if (response.status === 304) {
-    renderCurrent();
+    renderStatus();
     return;
   }
   if (!response.ok) throw Error(await response.text());
@@ -191,4 +197,6 @@ function connectEvents() {
   });
 }
 
-connectEvents();
+requestRefresh();
+setInterval(requestRefresh, 2000);
+if (typeof EventSource === 'function') connectEvents();

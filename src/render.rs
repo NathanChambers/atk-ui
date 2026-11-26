@@ -97,7 +97,7 @@ pub fn snapshot(document: &Document) -> Result<Value> {
 pub fn html(snapshot: &Value, mode: native::RenderMode) -> Result<String> {
     let title = snapshot["name"]
         .as_str()
-        .unwrap_or("UI Workbench")
+        .unwrap_or("atk-ui")
         .replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

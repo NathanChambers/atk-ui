@@ -1,4 +1,4 @@
-# ATK UI usage guide
+# atk-ui usage guide
 
 [Installation and quickstart](../README.md)
 
@@ -14,7 +14,7 @@ In a fresh project directory, create and render a first screen:
 atk-ui
 ```
 
-Open the viewer URL printed at startup and choose **Hello UI** with the folder button. The CLI saves the design under `.ui/sessions/`.
+Open the viewer URL printed at startup and choose **Hello UI** with the folder button. The CLI saves the design under `.ui/sessions/`. For work started in another terminal or by an agent, pass the same absolute `--project DIR` to both programs. The viewer prints the directory it watches. Open its folder picker to select the CLI’s `--session ID`, or add `?session=ID` to the viewer URL to wait for that session before it exists. The viewer receives change notifications and checks for missed saves every two seconds.
 
 ## Author a screen
 

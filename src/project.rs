@@ -1223,7 +1223,7 @@ mod command_tests {
             .duration_since(std::time::UNIX_EPOCH)?
             .as_nanos();
         let path =
-            std::env::temp_dir().join(format!("ui-workbench-edit-{}-{stamp}", std::process::id()));
+            std::env::temp_dir().join(format!("atk-ui-edit-{}-{stamp}", std::process::id()));
         fs::create_dir(&path)?;
         Ok(path)
     }

@@ -1,3 +1,6 @@
+#[allow(dead_code)]
+mod mcp;
+
 mod recording;
 
 use serde_json::{Value, json};
@@ -7,11 +10,16 @@ use std::{
     path::{Path, PathBuf},
     process::ExitCode,
 };
-use ui_workbench::{Result, project::Project};
+use atk_ui::{Result, project::Project};
 
 fn main() -> ExitCode {
     if let Err(error) = run() {
-        println!("{}", json!({"ok":false,"error":error.to_string()}));
+        let reply = json!({"ok":false,"error":error.to_string()});
+        if env::args().any(|argument| argument == "--mcp") {
+            eprintln!("{reply}");
+        } else {
+            println!("{reply}");
+        }
         return ExitCode::FAILURE;
     }
     ExitCode::SUCCESS
@@ -24,6 +32,8 @@ fn run() -> Result<()> {
     let mut output = None;
     let mut batch = false;
     let mut debug = false;
+    let mut mcp_mode = false;
+    let mut commands = false;
     let mut args = env::args().skip(1).peekable();
     if args.peek().is_some_and(|arg| arg == "--replay") {
         args.next();
@@ -47,6 +57,7 @@ fn run() -> Result<()> {
                 println!(
                     "atk-ui-cli [--project DIR] [--session ID] [--batch] [--file FILE | --input FILE | --command JSON] [--output FILE]\nSend one JSON command or an array via stdin. Use --batch to require an array. Use --output for a single export command. Send {{\"command\":\"help\"}} for command discovery."
                 );
+                println!("Use --mcp to serve MCP over stdio or --commands for machine-readable help.");
                 println!("Use --debug to record requests, replies, and saved session state. Use --replay FILE to read a recording.");
                 return Ok(());
             }
@@ -60,6 +71,8 @@ fn run() -> Result<()> {
             "--session" => session = args.next().ok_or("--session requires an ID")?,
             "--batch" if !batch => batch = true,
             "--debug" if !debug => debug = true,
+            "--mcp" => mcp_mode = true,
+            "--commands" => commands = true,
             "--output" | "-o" if output.is_none() => {
                 output = Some(args.next().ok_or("--output requires a path")?);
             }
@@ -76,6 +89,24 @@ fn run() -> Result<()> {
             _ => return Err(format!("Unexpected or repeated argument {arg}").into()),
         }
     }
+    if mcp_mode || commands {
+        let project = Project::new(project);
+        let help = project.execute(&session, &json!({"command":"help"}))?;
+        let mut catalog: Vec<_> = help.as_object().unwrap().iter()
+            .filter(|(name, value)| value.is_object() && !matches!(name.as_str(), "appearance" | "component_instance" | "tasks" | "read_topic" | "all_topics"))
+            .map(|(name, example)| mcp::example_tool(name, example))
+            .collect();
+        catalog.push(mcp::example_tool("help", &json!({"topic":"help topic","all":false,"offset":0,"limit":32})));
+        catalog.push(mcp::batch_tool("run_batch"));
+        if commands {
+            println!("{}", json!({"tools":catalog}));
+            return Ok(());
+        }
+        return Ok(mcp::serve("atk-ui", &catalog, true, |name, arguments| {
+            mcp_execute(&project, &session, name, arguments)
+        })?);
+    }
+
     let source = match source {
         Some(source) => source,
         None => {
@@ -135,7 +166,9 @@ fn run() -> Result<()> {
         if let Some(recording) = &mut recording {
             recording.begin(&request)?;
         }
-        let result = execute_with_receipt(&project, &session, &request);
+        let result = mcp::call_local(request.clone(), "run_batch", |name, arguments| {
+            mcp_execute(&project, &session, name, arguments)
+        });
         if let Some(recording) = &mut recording {
             let state = recorded_state(&project, &session, &request);
             let reply = match &result {
@@ -150,6 +183,14 @@ fn run() -> Result<()> {
     Ok(())
 }
 
+
+fn mcp_execute(project: &Project, session: &str, name: &str, arguments: &Value) -> std::result::Result<Value, String> {
+    let execute = |request: &Value| execute_with_receipt(project, session, request).map_err(|error| error.to_string());
+    if name == "run_batch" {
+        return Ok(mcp::run_batch(mcp::batch_commands(arguments)?, execute));
+    }
+    execute(&mcp::native_command(name, arguments)?)
+}
 
 fn recorded_state(project: &Project, session: &str, request: &Value) -> Value {
     let document = project.read(session).ok();

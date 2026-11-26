@@ -1,4 +1,4 @@
-# ATK UI
+# atk-ui
 
 Build UI mockups and navigation flows with an AI agent. Review the saved design on a local browser canvas.
 
@@ -34,8 +34,8 @@ Run `atk-ui` from your project directory and open the viewer URL printed at star
 
 ## Related tools
 
-- [ATK Mesh](https://github.com/NathanChambers/atk-mesh)
-- [ATK Audio](https://github.com/NathanChambers/atk-audio)
+- [atk-mesh](https://github.com/NathanChambers/atk-mesh)
+- [atk-audio](https://github.com/NathanChambers/atk-audio)
 
 ## License
 
