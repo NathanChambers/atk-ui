@@ -83,6 +83,7 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<()> {
+    let mut headless = false;
     let mut root = None;
     let mut port = 0;
     let mut args = env::args().skip(1);
@@ -90,7 +91,7 @@ fn run() -> Result<()> {
         match arg.as_str() {
             "--help" | "-h" => {
                 println!(
-                    "atk-ui [--project DIR | DIR] [--port PORT]\nServes saved UI render snapshots in a read-only browser viewer.\nThe directory defaults to the current working directory. Omit --port or pass 0 for an available port."
+                    "atk-ui [--project DIR | DIR] [--port PORT] [--headless]\nUse --headless to print the viewer URL without launching a browser.\nServes saved UI render snapshots in a read-only browser viewer.\nThe directory defaults to the current working directory. Omit --port or pass 0 for an available port."
                 );
                 return Ok(());
             }
@@ -103,6 +104,7 @@ fn run() -> Result<()> {
                     args.next().ok_or("--project requires a directory")?,
                 ))
             }
+            "--headless" => headless = true,
             "--port" => port = args.next().ok_or("--port requires a number")?.parse()?,
             path if !path.starts_with('-') && root.is_none() => root = Some(PathBuf::from(path)),
             _ => return Err(format!("Unexpected or repeated argument {arg}").into()),
@@ -118,7 +120,23 @@ fn run() -> Result<()> {
     thread::spawn(move || watch_sessions(&directory, &watcher));
     let listener = TcpListener::bind(("127.0.0.1", port))?;
     let address = listener.local_addr()?;
-    eprintln!("atk-ui viewer at http://{address}");
+    let url = format!("http://{address}");
+    eprintln!("atk-ui viewer at {url}");
+    if !headless {
+        #[cfg(target_os = "windows")]
+        let mut browser = {
+            let mut command = std::process::Command::new("rundll32.exe");
+            command.arg("url.dll,FileProtocolHandler");
+            command
+        };
+        #[cfg(target_os = "macos")]
+        let mut browser = std::process::Command::new("open");
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let mut browser = std::process::Command::new("xdg-open");
+        if let Err(error) = browser.arg(&url).spawn() {
+            eprintln!("Could not launch browser ({error}). Open {url} to view projects.");
+        }
+    }
     eprintln!("Watching project: {}", root.display());
     let project = Arc::new(Project::new(root));
     let frames = Arc::new(Mutex::new(FrameCache::default()));

@@ -26,7 +26,7 @@ Add the [`atk-ui` skill](.agents/skills/atk-ui/SKILL.md) using your agent's skil
 
 ## Open the viewer
 
-Run `atk-ui` from your project directory and open the viewer URL printed at startup. Once your agent has saved a workspace, choose it with the folder button. From there, pan and zoom around the flow, then select a transition to focus its destination.
+Run `atk-ui` from your project directory. Your browser opens a workspace picker that updates as workspaces are saved. Choose one to explore its flow, or use the folder button to switch. Pass `--headless` to open the printed URL manually.
 
 ## Learn more
 

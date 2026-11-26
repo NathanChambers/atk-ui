@@ -11,6 +11,7 @@ const modeButtons = [...document.querySelectorAll('[data-render-mode]')];
 const params = new URLSearchParams(location.search);
 const viewerGeneration = document.querySelector('meta[name="ui-viewer-generation"]')?.content;
 let selected = params.get('session') ?? '';
+let firstDiscovery = true;
 let mode = modeButtons.some(button => button.dataset.renderMode === params.get('mode')) ? params.get('mode') : 'color';
 let currentSnapshot = null;
 let workspaces = [];
@@ -130,12 +131,15 @@ async function refresh() {
     return;
   }
   const ids = await list.json();
-  if (!selected) selected = ids[0] ?? '';
   if (ids.join('|') !== workspaces.join('|')) {
     workspaces = ids;
     if (picker.open) drawWorkspaces();
   }
 
+  if (firstDiscovery) {
+    firstDiscovery = false;
+    if (!selected) openWorkspaces();
+  }
   if (!ids.includes(selected)) {
     workspacePath.textContent = selected || 'No workspace selected';
     status.textContent = selected ? 'Waiting for saved workspace' : 'Waiting for a saved workspace in this project';
