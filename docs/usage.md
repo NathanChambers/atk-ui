@@ -1,20 +1,34 @@
 # atk-ui usage guide
 
-[Installation and quickstart](../README.md)
+[Installation](../README.md#install)
 
 ## Quickstart
 
-In a fresh project directory, create and render a first screen:
+In a fresh project directory, create a two-screen workspace with a button that opens **Details**. The flow board uses an empty action path for **Overview** and replays `open-details` for **Details**.
 
 ```powershell
-'{"command":"session_start","name":"Hello UI"}' | atk-ui-cli --session hello-ui
-'{"command":"screen_set","id":"home","width":720,"height":440,"background":"#17202b"}' | atk-ui-cli --session hello-ui
-'{"command":"element_set","screen":"home","id":"title","type":"text","x":48,"y":48,"width":480,"height":72,"text":"Hello UI","appearance":{"fontSize":40,"ink":[239,245,252,255]}}' | atk-ui-cli --session hello-ui
-'{"command":"session_render","screen":"home","format":"png","path":"hello-ui.png"}' | atk-ui-cli --session hello-ui
+@'
+[
+  {"command":"session_start","name":"Hello UI"},
+  {"command":"screen_set","id":"home","width":640,"height":360,"background":"#17202b"},
+  {"command":"screen_set","id":"details","width":640,"height":360,"background":"#27434b"},
+  {"command":"element_set","screen":"home","id":"heading","type":"text","x":48,"y":48,"width":480,"height":56,"text":"Overview","appearance":{"fontSize":38,"ink":[239,245,252,255]}},
+  {"command":"element_set","screen":"details","id":"heading","type":"text","x":48,"y":48,"width":480,"height":56,"text":"Details","appearance":{"fontSize":38,"ink":[239,245,252,255]}},
+  {"command":"element_set","screen":"home","id":"open-details","type":"button","x":48,"y":144,"width":208,"height":54,"text":"Open details","action":{"type":"navigate","screen":"details"}},
+  {"command":"flow_set","board":{"frames":[
+    {"id":"overview","title":"Overview","x":0,"y":0,"path":[]},
+    {"id":"details","title":"Details","x":720,"y":0,"path":["open-details"]}
+  ],"edges":[{"from":"overview","to":"details","action":"open-details","label":"Open details"}]}},
+  {"command":"session_validate"},
+  {"command":"session_render","frame":"details","format":"png","path":"details.png"}
+]
+'@ | atk-ui-cli --session hello-ui
 atk-ui
 ```
 
-Open the viewer URL printed at startup and choose **Hello UI** with the folder button. The CLI saves the design under `.ui/sessions/`. For work started in another terminal or by an agent, pass the same absolute `--project DIR` to both programs. The viewer prints the directory it watches. Open its folder picker to select the CLI’s `--session ID`, or add `?session=ID` to the viewer URL to wait for that session before it exists. The viewer receives change notifications and checks for missed saves every two seconds.
+The validation reply should report `valid: true`, and the exported `details.png` should show **Details**. Open the printed viewer URL. In the workspace picker, search for either the display title **Hello UI** or the session ID `hello-ui`. Open the matching workspace and click **Open details** in the **Overview** frame to follow the transition.
+
+The CLI saves the design under `.ui/sessions/`. For work started in another terminal or by an agent, pass the same absolute `--project DIR` to both programs. The viewer prints the directory it watches. Use the folder button to switch workspaces, or add `?session=ID` to the viewer URL to wait for that session before it exists. The viewer receives change notifications and checks for missed saves every two seconds.
 
 ## Author a screen
 
@@ -70,7 +84,7 @@ Define a component with `component_set` and a list of ordinary visual elements. 
 
 Run commands with JSON via stdin, `--file`, or `--command`. Use `help` to see the current command contract. Arrays execute in order and retain successful commands if a later command fails.
 
-Use the `hello-ui` session from the [quickstart](../README.md#quickstart) to try these commands.
+Use the `hello-ui` session from the [quickstart](#quickstart) to try these commands.
 
 ```powershell
 '{"command":"session_render"}' | atk-ui-cli --session hello-ui

@@ -15,6 +15,7 @@ let firstDiscovery = true;
 let mode = modeButtons.some(button => button.dataset.renderMode === params.get('mode')) ? params.get('mode') : 'color';
 let currentSnapshot = null;
 let workspaces = [];
+let workspaceRevision = null;
 let matches = [];
 let activeIndex = 0;
 let displayed = '';
@@ -58,10 +59,10 @@ updateModeButtons();
 
 function drawWorkspaces() {
   const query = search.value.trim().toLowerCase();
-  matches = workspaces.filter(id => id.includes(query));
+  matches = workspaces.filter(({ id, name }) => id.includes(query) || name.toLowerCase().includes(query));
   activeIndex = Math.max(0, Math.min(activeIndex, matches.length - 1));
   empty.hidden = matches.length > 0;
-  const options = matches.map((id, index) => {
+  const options = matches.map(({ id, name }, index) => {
     const option = document.createElement('button');
     option.type = 'button';
     option.id = `workspace-option-${index}`;
@@ -69,7 +70,7 @@ function drawWorkspaces() {
     option.setAttribute('role', 'option');
     option.setAttribute('aria-selected', String(index === activeIndex));
     if (id === selected) option.setAttribute('aria-current', 'true');
-    option.textContent = id;
+    option.textContent = name === id ? id : `${name} · ${id}`;
     option.addEventListener('click', () => chooseWorkspace(id));
     return option;
   });
@@ -85,7 +86,7 @@ function drawWorkspaces() {
 function openWorkspaces() {
   if (picker.open) return;
   search.value = '';
-  activeIndex = workspaces.indexOf(selected);
+  activeIndex = workspaces.findIndex(workspace => workspace.id === selected);
   picker.showModal();
   search.focus();
   drawWorkspaces();
@@ -113,7 +114,7 @@ search.addEventListener('keydown', event => {
     drawWorkspaces();
   } else if (event.key === 'Enter' && matches.length > 0) {
     event.preventDefault();
-    chooseWorkspace(matches[activeIndex]);
+    chooseWorkspace(matches[activeIndex].id);
   }
 });
 document.addEventListener('keydown', event => {
@@ -123,16 +124,17 @@ document.addEventListener('keydown', event => {
 });
 
 async function refresh() {
-  const list = await fetch('/api/sessions', { cache: 'no-store' });
-  if (!list.ok) throw Error('Could not list workspaces');
+  const listHeaders = workspaceRevision ? { 'If-None-Match': workspaceRevision } : {};
+  const list = await fetch('/api/sessions?details=1', { headers: listHeaders, cache: 'no-store' });
   const generation = list.headers.get('X-UI-Viewer-Generation');
   if (generation && viewerGeneration && generation !== viewerGeneration) {
     location.reload();
     return;
   }
-  const ids = await list.json();
-  if (ids.join('|') !== workspaces.join('|')) {
-    workspaces = ids;
+  if (list.status !== 304) {
+    if (!list.ok) throw Error('Could not list workspaces');
+    workspaces = await list.json();
+    workspaceRevision = list.headers.get('ETag');
     if (picker.open) drawWorkspaces();
   }
 
@@ -140,7 +142,7 @@ async function refresh() {
     firstDiscovery = false;
     if (!selected) openWorkspaces();
   }
-  if (!ids.includes(selected)) {
+  if (!workspaces.some(workspace => workspace.id === selected)) {
     workspacePath.textContent = selected || 'No workspace selected';
     status.textContent = selected ? 'Waiting for saved workspace' : 'Waiting for a saved workspace in this project';
     if (currentSnapshot) {

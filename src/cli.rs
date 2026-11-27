@@ -1,3 +1,4 @@
+mod build_identity;
 #[allow(dead_code)]
 mod mcp;
 
@@ -62,7 +63,7 @@ fn run() -> Result<()> {
                 return Ok(());
             }
             "--version" | "-V" => {
-                println!("atk-ui-cli {}", env!("CARGO_PKG_VERSION"));
+                build_identity::print_version()?;
                 return Ok(());
             }
             "--project" => {
