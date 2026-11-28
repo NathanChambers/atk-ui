@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     env, fs,
     io::{BufRead, BufReader, Read, Write},
-    net::{TcpListener, TcpStream},
+    net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream},
     path::{Path, PathBuf},
     process::ExitCode,
     sync::{Arc, Condvar, Mutex, OnceLock, mpsc},
@@ -86,12 +86,13 @@ fn main() -> ExitCode {
 fn run() -> Result<()> {
     let mut root = None;
     let mut port = 0;
+    let mut lan = false;
     let mut args = env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--help" | "-h" => {
                 println!(
-                    "atk-ui [--project DIR | DIR] [--port PORT] [--headless]\nThe viewer prints its URL on startup. --headless is accepted for compatibility.\nServes saved UI render snapshots in a read-only browser viewer.\nThe directory defaults to the current working directory. Omit --port or pass 0 for an available port. Use --version or -V for build identity."
+                    "atk-ui [--project DIR | DIR] [--port PORT] [--headless] [--lan]\nThe viewer prints its URL on startup. --headless is accepted for compatibility.\nServes saved UI render snapshots in a read-only browser viewer.\nThe viewer listens on loopback by default. Use --lan to listen on all IPv4 interfaces.\nThe directory defaults to the current working directory. Omit --port or pass 0 for an available port. Use --version or -V for build identity."
                 );
                 return Ok(());
             }
@@ -105,6 +106,7 @@ fn run() -> Result<()> {
                 ))
             }
             "--headless" => {},
+            "--lan" => lan = true,
             "--port" => port = args.next().ok_or("--port requires a number")?.parse()?,
             path if !path.starts_with('-') && root.is_none() => root = Some(PathBuf::from(path)),
             _ => return Err(format!("Unexpected or repeated argument {arg}").into()),
@@ -118,10 +120,17 @@ fn run() -> Result<()> {
     let directory = root.join(".ui").join("sessions");
     let watcher = Arc::clone(&events);
     thread::spawn(move || watch_sessions(&directory, &watcher));
-    let listener = TcpListener::bind(("127.0.0.1", port))?;
-    let address = listener.local_addr()?;
-    let url = format!("http://{address}");
-    eprintln!("atk-ui viewer at {url}");
+    let bind_ip = if lan {
+        Ipv4Addr::UNSPECIFIED
+    } else {
+        Ipv4Addr::LOCALHOST
+    };
+    let listener = TcpListener::bind((bind_ip, port))?;
+    let port = listener.local_addr()?.port();
+    eprintln!("atk-ui viewer at http://{}:{port}", Ipv4Addr::LOCALHOST);
+    if lan {
+        eprintln!("LAN access: http://<host LAN IP>:{port}");
+    }
     eprintln!("Watching project: {}", root.display());
     let project = Arc::new(Project::new(root));
     let frames = Arc::new(Mutex::new(FrameCache::default()));
@@ -136,7 +145,7 @@ fn run() -> Result<()> {
             loop {
                 let stream = receive.lock().unwrap().recv();
                 let Ok(stream) = stream else { break };
-                let _ = handle(stream, &project, address.port(), &frames, &events);
+                let _ = handle(stream, &project, lan, &frames, &events);
             }
         });
     }
@@ -233,10 +242,11 @@ fn stream_events(mut stream: TcpStream, events: &SessionEvents) -> std::io::Resu
 fn handle(
     mut stream: TcpStream,
     project: &Project,
-    port: u16,
+    lan: bool,
     frames: &Mutex<FrameCache>,
     events: &Arc<SessionEvents>,
 ) -> Result<()> {
+    let address = stream.local_addr()?;
     let timeout = Some(Duration::from_secs(2));
     stream.set_read_timeout(timeout)?;
     stream.set_write_timeout(timeout)?;
@@ -261,9 +271,7 @@ fn handle(
             }
         }
     }
-    if !host.is_some_and(|host| {
-        host == format!("127.0.0.1:{port}") || host == format!("localhost:{port}")
-    }) {
+    if !host.is_some_and(|host| host_allowed(&host, address, lan)) {
         return respond(
             &mut stream,
             "403 Forbidden",
@@ -455,6 +463,21 @@ fn handle(
         "Page not found",
         None,
     )
+}
+
+fn host_allowed(host: &str, address: SocketAddr, lan: bool) -> bool {
+    if host == address.to_string() {
+        return true;
+    }
+
+    let port = address.port();
+    let ip = address.ip();
+    let loopback = ip == Ipv4Addr::LOCALHOST;
+    if loopback && host == format!("localhost:{port}") {
+        return true;
+    }
+
+    lan && port == 80 && (host == ip.to_string() || (loopback && host == "localhost"))
 }
 
 fn query_value<'a>(query: &'a str, name: &str) -> Option<&'a str> {

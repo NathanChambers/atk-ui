@@ -97,7 +97,6 @@ fn run() -> Result<()> {
             .filter(|(name, value)| value.is_object() && !matches!(name.as_str(), "appearance" | "component_instance" | "tasks" | "read_topic" | "all_topics"))
             .map(|(name, example)| mcp::example_tool(name, example))
             .collect();
-        catalog.push(mcp::example_tool("help", &json!({"topic":"help topic","all":false,"offset":0,"limit":32})));
         catalog.push(mcp::batch_tool("run_batch"));
         if commands {
             println!("{}", json!({"tools":catalog}));

@@ -944,6 +944,9 @@ pub(crate) fn validate_element(document: &Document, request: &Value) -> Result<V
             }
             _ => return Err("Unknown button action".into()),
         }
+        if let Some(cue) = action.get("audioCue") {
+            validate_audio_cue(cue)?;
+        }
     }
     if kind == "hotspot" && request["action"]["type"] != "navigate" {
         return Err("Hotspots require a navigate action".into());
@@ -1050,6 +1053,20 @@ pub(crate) fn validate_component_overrides(
     Ok(())
 }
 
+fn validate_audio_cue(value: &Value) -> Result<()> {
+    let path = value
+        .as_str()
+        .ok_or("audioCue must be a project-relative path string")?;
+    let invalid_character = path.contains(['\\', ':']) || path.chars().any(char::is_control);
+    let invalid_segment = path.split('/').any(|part| {
+        part.is_empty() || part != part.trim() || matches!(part, "." | "..")
+    });
+    if invalid_character || invalid_segment {
+        return Err("audioCue must be a project-relative path with '/' separators and no '.' or '..' parts".into());
+    }
+    Ok(())
+}
+
 fn scalar(value: &Value) -> bool {
     value.is_null() || value.is_boolean() || value.is_string() || value.is_number()
 }
@@ -1117,6 +1134,7 @@ pub(crate) fn encode_base64(bytes: &[u8]) -> String {
 
 fn help() -> Value {
     let mut commands = json!({
+        "help":{"topic":"help topic or exact command ID","all":false,"offset":0,"limit":32},
         "session_start": {"name":"optional workspace name"},
         "session_inspect": {}, "project_list": {}, "session_validate": {},
         "screen_set": {"id":"screen","width":1080,"height":1920,"canvasMode":"fixed_aspect | content_height","label":"optional","background":"optional hex color"},
@@ -1212,6 +1230,71 @@ mod command_tests {
             assert!(project.execute(session, &invalid).is_err());
             assert_eq!(fs::read(design)?, previous);
             assert_eq!(project.read(session)?.revision, 4);
+            Ok(())
+        })();
+        fs::remove_dir_all(path)?;
+        result
+    }
+
+    #[test]
+    fn help_resolves_command_ids_and_grouped_topics() -> Result<()> {
+        let project = Project::new(".");
+        let command = project.execute("fixture", &json!({"command":"help","topic":"sprite_import"}))?;
+        assert_eq!(command["command"], "sprite_import");
+        assert_eq!(command["fields"]["path"], "sprite.png");
+
+        let section = project.execute("fixture", &json!({"command":"help","topic":"workflow","limit":1}))?;
+        assert_eq!(section["title"], "Quickstart");
+        assert_eq!(section["next_offset"], 1);
+        Ok(())
+    }
+
+    #[test]
+    fn audio_cue_survives_handoff_without_changing_navigation() -> Result<()> {
+        let path = env_test_path()?;
+        let result = (|| {
+            let project = Project::new(&path);
+            let session = "fixture";
+            for command in [
+                json!({"command":"session_start"}),
+                json!({"command":"screen_set","id":"home","width":100,"height":100}),
+                json!({"command":"screen_set","id":"details","width":100,"height":100}),
+                json!({"command":"element_set","screen":"home","id":"next","type":"hotspot",
+                    "x":0,"y":0,"width":40,"height":40,"action":{"type":"navigate","screen":"details"}}),
+                json!({"command":"flow_set","board":{
+                    "frames":[{"id":"home","title":"Home","x":0,"y":0},
+                        {"id":"details","title":"Details","x":100,"y":0,"path":["next"]}],
+                    "edges":[{"from":"home","to":"details","action":"next","label":"Next"}]
+                }}),
+            ] {
+                project.execute(session, &command)?;
+            }
+
+            let saved = project.sessions().join("fixture.json");
+            let unbound = handoff(&project.read(session)?)?;
+            assert!(unbound["references"]["frames"]["home"]["actions"][0].get("audioCue").is_none());
+
+            let previous = fs::read(&saved)?;
+            for cue in [json!(5), json!("/alert.wav"), json!("../alert.wav"), json!("C:/alert.wav")] {
+                let invalid = json!({"command":"element_patch","screen":"home","id":"next",
+                    "changes":{"action":{"audioCue":cue}}});
+                assert!(project.execute(session, &invalid).is_err());
+            }
+            assert_eq!(fs::read(&saved)?, previous);
+
+            project.execute(session, &json!({"command":"element_patch","screen":"home","id":"next",
+                "changes":{"action":{"audioCue":"audio/alert.wav"}}}))?;
+            let reopened = Project::new(&path).read(session)?;
+            let with_cue = handoff(&reopened)?;
+            assert_eq!(with_cue["design"]["screens"][0]["elements"][0]["action"]["audioCue"], "audio/alert.wav");
+            assert_eq!(with_cue["references"]["frames"]["home"]["actions"][0]["audioCue"], "audio/alert.wav");
+            assert_eq!(with_cue["references"]["frames"]["details"]["screen"]["id"], "details");
+            assert_eq!(with_cue["references"]["frames"]["home"]["image"], unbound["references"]["frames"]["home"]["image"]);
+
+            project.execute(session, &json!({"command":"element_patch","screen":"home","id":"next",
+                "changes":{"action":{"audioCue":null}}}))?;
+            let cleared = handoff(&project.read(session)?)?;
+            assert!(cleared["references"]["frames"]["home"]["actions"][0].get("audioCue").is_none());
             Ok(())
         })();
         fs::remove_dir_all(path)?;

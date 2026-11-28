@@ -51,7 +51,11 @@ pub fn snapshot(document: &Document) -> Result<Value> {
                 .ok_or("Saved element is missing its ID")?;
             match element["type"].as_str() {
                 Some("button" | "hotspot") if element["action"].is_object() => {
-                    actions.push(json!({"target":id,"label":element["text"],"operation":"press"}));
+                    let mut action = json!({"target":id,"label":element["text"],"operation":"press"});
+                    if let Some(cue) = element["action"]["audioCue"].as_str() {
+                        action["audioCue"] = json!(cue);
+                    }
+                    actions.push(action);
                 }
                 Some("input" | "checkbox" | "select") => {
                     if let Some(key) = element["key"].as_str() {

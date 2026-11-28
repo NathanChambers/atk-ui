@@ -82,7 +82,7 @@ Define a component with `component_set` and a list of ordinary visual elements. 
 
 ## Preview and export
 
-Run commands with JSON via stdin, `--file`, or `--command`. Use `help` to see the current command contract. Arrays execute in order and retain successful commands if a later command fails.
+Run commands with JSON via stdin, `--file`, or `--command`. Use `help` to see the command catalog, or send `{"command":"help","topic":"sprite_import"}` to look up one command. Arrays execute in order and retain successful commands if a later command fails.
 
 Use the `hello-ui` session from the [quickstart](#quickstart) to try these commands.
 
@@ -134,6 +134,18 @@ specific revision. The bundle contains:
 - `references.screens` and `references.frames`, keyed by ID. Each entry has
   resolved screen elements in paint order, available actions, and a PNG reference
   in `image.dataBase64`. Frame references replay the saved flow path.
+
+An authored button or hotspot action can carry an optional `audioCue` reference.
+
+```json
+{"command":"element_patch","screen":"normal","id":"simulate-alert","changes":{"action":{"audioCue":"audio/alert.wav"}}}
+```
+
+The handoff preserves the cue in the authored action and on the corresponding
+available action in each affected screen or frame reference. Use slash-separated
+paths relative to the UI project. Carry the referenced audio files with the
+handoff. atk-ui stores the reference, while the engine owns loading and playback.
+To clear a cue, patch `audioCue` to `null`.
 
 Geometry uses design pixels from the top-left. Asset payloads are stored once
 in `design`. Embed fonts in the session for a portable bundle, or supply the

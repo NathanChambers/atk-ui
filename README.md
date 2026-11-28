@@ -28,6 +28,8 @@ Add the [`atk-ui` skill](.agents/skills/atk-ui/SKILL.md) using your agent's skil
 
 Run `atk-ui` from your project directory. Open the printed URL to see a workspace picker that updates as workspaces are saved. Choose one to explore its flow, or use the folder button to switch.
 
+The viewer listens on loopback by default. To share the read-only viewer on your local network, run `atk-ui --lan --port 8080` and open `http://<host LAN IP>:8080` from another device, using the host computer's IPv4 address. The viewer prints the selected port if you omit `--port` or pass `--port 0`.
+
 ## Learn more
 
 - [Usage and command reference](docs/usage.md) for layouts, components, flows, exports, and debug recordings.

@@ -30,9 +30,14 @@ pub fn execute(request: &Value, mut catalog: Value) -> Result<Value, String> {
     };
 
     let topic = topic.as_str().ok_or("topic must be a string")?;
-    let title = topics[topic]
-        .as_str()
-        .ok_or("unknown help topic; use help with all:true to list topics")?;
+    let Some(title) = topics[topic].as_str() else {
+        if let Some(fields) = catalog.get(topic).filter(|entry| entry.is_object())
+            && !matches!(topic, "appearance" | "component_instance")
+        {
+            return Ok(json!({"command":topic,"fields":fields}));
+        }
+        return Err("unknown help topic or command; use help with all:true for topics or help without arguments for commands".into());
+    };
     let text = if topic == "command-api" {
         GUIDE
     } else {
